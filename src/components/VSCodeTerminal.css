@@ -1,0 +1,77 @@
+.vscode-terminal {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 13px;
+  border-top: 1px solid #333;
+}
+
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 12px;
+  background-color: #252526;
+  border-bottom: 1px solid #333;
+  font-size: 12px;
+  color: #cccccc;
+}
+
+.terminal-status {
+  font-size: 11px;
+  color: #75beff;
+}
+
+.terminal-container {
+  flex: 1;
+  padding: 8px;
+  overflow: hidden;
+}
+
+/* XTerm.js özelleştirmeleri */
+.xterm-viewport::-webkit-scrollbar {
+  width: 10px;
+}
+
+.xterm-viewport::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb {
+  background-color: #424242;
+  border-radius: 6px;
+  border: 2px solid #1e1e1e;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background-color: #555555;
+}
+
+/* Terminal boyutunu ayarla */
+.terminal-container .xterm {
+  height: 100%;
+  width: 100%;
+}
+
+/* Terminal yazı tipi */
+.terminal-container .xterm-helper-textarea {
+  font-family: 'Fira Code', monospace;
+}
+
+/* Terminal imleci */
+.terminal-container .xterm-cursor-layer {
+  z-index: 1;
+}
+
+/* Terminal seçimi */
+.terminal-container .xterm-selection-layer {
+  z-index: 0;
+}
+
+/* Terminal arka planı */
+.terminal-container .xterm-screen {
+  background-color: #1e1e1e;
+}

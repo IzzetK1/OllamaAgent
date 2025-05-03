@@ -1,0 +1,129 @@
+.file-explorer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 13px;
+  border-right: 1px solid #333;
+}
+
+.file-explorer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #252526;
+  border-bottom: 1px solid #333;
+}
+
+.file-explorer-header h3 {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #bbbbbb;
+}
+
+.file-explorer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.file-explorer-actions button {
+  background: none;
+  border: none;
+  color: #cccccc;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+}
+
+.file-explorer-actions button:hover {
+  background-color: #2a2d2e;
+}
+
+.file-explorer-content {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 0;
+}
+
+.file-tree {
+  padding: 0 8px;
+}
+
+.file-item, .folder-header {
+  display: flex;
+  align-items: center;
+  padding: 3px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.file-item:hover, .folder-header:hover {
+  background-color: #2a2d2e;
+}
+
+.file-icon, .folder-icon {
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.folder-icon {
+  color: #e8ab53;
+}
+
+.file-icon {
+  color: #75beff;
+}
+
+.folder-content {
+  padding-left: 16px;
+}
+
+.loading, .error {
+  padding: 16px;
+  text-align: center;
+  color: #bbbbbb;
+}
+
+.error {
+  color: #f48771;
+}
+
+/* Dosya türlerine göre simge renkleri */
+.file-item[data-ext="js"] .file-icon,
+.file-item[data-ext="jsx"] .file-icon {
+  color: #ffca28;
+}
+
+.file-item[data-ext="html"] .file-icon {
+  color: #e44d26;
+}
+
+.file-item[data-ext="css"] .file-icon {
+  color: #42a5f5;
+}
+
+.file-item[data-ext="json"] .file-icon {
+  color: #fbc02d;
+}
+
+.file-item[data-ext="py"] .file-icon {
+  color: #4caf50;
+}
+
+.file-item[data-ext="md"] .file-icon {
+  color: #42a5f5;
+}
+
+/* Seçili dosya */
+.file-item.selected {
+  background-color: #37373d;
+}

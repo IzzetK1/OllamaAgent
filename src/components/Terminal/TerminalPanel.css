@@ -1,0 +1,56 @@
+/* TerminalPanel.css */
+.terminal-panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #1e1e1e;
+  color: #cccccc;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px;
+  height: 30px;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: bold;
+  color: #cccccc;
+  background-color: #333333;
+}
+
+.terminal-title {
+  margin: 0;
+  padding: 0;
+}
+
+.terminal-container {
+  flex: 1;
+  padding: 4px;
+  background-color: #1e1e1e;
+}
+
+/* XTerm.js özelleştirmeleri */
+.xterm-viewport::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.xterm-viewport::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb {
+  background: #3e3e3e;
+  border-radius: 5px;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: #555555;
+}
+
+.xterm-cursor-layer {
+  z-index: 1;
+}

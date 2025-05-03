@@ -1,0 +1,310 @@
+/* Markdown işleme stilleri */
+
+.markdown-renderer {
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  color: var(--text-primary);
+  padding: 16px;
+  overflow-wrap: break-word;
+}
+
+/* Başlıklar */
+.markdown-h1 {
+  font-size: 2em;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.3em;
+}
+
+.markdown-h2 {
+  font-size: 1.5em;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.3em;
+}
+
+.markdown-h3 {
+  font-size: 1.25em;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+.markdown-h4 {
+  font-size: 1em;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+
+/* Paragraflar */
+.markdown-p {
+  margin-top: 0;
+  margin-bottom: 1em;
+}
+
+/* Listeler */
+.markdown-ul,
+.markdown-ol {
+  margin-top: 0;
+  margin-bottom: 1em;
+  padding-left: 2em;
+}
+
+.markdown-li {
+  margin-bottom: 0.25em;
+}
+
+.markdown-li > .markdown-p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+/* Bağlantılar */
+.markdown-a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.markdown-a:hover {
+  text-decoration: underline;
+}
+
+/* Alıntılar */
+.markdown-blockquote {
+  margin: 1em 0;
+  padding: 0 1em;
+  color: var(--text-secondary);
+  border-left: 0.25em solid var(--border-color);
+}
+
+/* Tablolar */
+.markdown-table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+  overflow: auto;
+  display: block;
+}
+
+.markdown-thead {
+  background-color: var(--bg-tertiary);
+}
+
+.markdown-th,
+.markdown-td {
+  padding: 0.5em 1em;
+  border: 1px solid var(--border-color);
+  text-align: left;
+}
+
+/* Kod blokları */
+.code-block-container {
+  margin: 1em 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--replit-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--replit-bg-tertiary);
+}
+
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: var(--replit-bg-secondary);
+  border-bottom: 1px solid var(--replit-bg-tertiary);
+}
+
+.code-block-language {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--replit-text-secondary);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+}
+
+.code-block-language::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background-color: var(--replit-accent);
+}
+
+.code-block-filename {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--replit-text);
+  margin-left: 8px;
+  font-weight: 500;
+}
+
+.code-block-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.code-block-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
+  background-color: transparent;
+  color: var(--replit-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.code-block-action-btn:hover {
+  background-color: var(--replit-bg-tertiary);
+  color: var(--replit-text);
+}
+
+.markdown-renderer pre {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  background-color: var(--replit-bg);
+  color: var(--replit-text);
+}
+
+.markdown-renderer code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  background-color: var(--replit-bg-tertiary);
+  color: var(--replit-text);
+}
+
+.markdown-renderer pre code {
+  padding: 0;
+  background-color: transparent;
+  border-radius: 0;
+}
+
+/* Syntax highlighting - Replit style */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #6c7280;
+}
+
+.token.punctuation {
+  color: #c9d1d9;
+}
+
+.token.property,
+.token.tag,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: #7ee787;
+}
+
+.token.boolean,
+.token.number {
+  color: #ff7b72;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: #a5d6ff;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: #79c0ff;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #ff7b72;
+}
+
+.token.function {
+  color: #d2a8ff;
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: #ffa657;
+}
+
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+
+.token.italic {
+  font-style: italic;
+}
+
+.token.entity {
+  cursor: help;
+}
+
+/* Yatay çizgi */
+.markdown-renderer hr {
+  height: 0.25em;
+  padding: 0;
+  margin: 1.5em 0;
+  background-color: var(--border-color);
+  border: 0;
+}
+
+/* Resimler */
+.markdown-renderer img {
+  max-width: 100%;
+  box-sizing: content-box;
+  background-color: #fff;
+  border-radius: 6px;
+}
+
+/* Karanlık tema için ayarlamalar */
+.dark .markdown-renderer {
+  color: var(--text-primary);
+}
+
+.dark .markdown-blockquote {
+  color: var(--text-secondary);
+  border-left-color: var(--border-color);
+}
+
+.dark .markdown-table {
+  border-color: var(--border-color);
+}
+
+.dark .markdown-th,
+.dark .markdown-td {
+  border-color: var(--border-color);
+}
+
+.dark .markdown-renderer code {
+  background-color: rgba(110, 118, 129, 0.4);
+}

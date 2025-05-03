@@ -1,0 +1,145 @@
+/* Settings CSS - Ayarlar Paneli Stilleri */
+
+/* Ayarlar paneli */
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 350px;
+  height: 100vh;
+  background-color: var(--bg-secondary);
+  border-left: 1px solid var(--border-color);
+  padding: var(--spacing-md);
+  overflow-y: auto;
+  z-index: 100;
+  transform: translateX(100%);
+  transition: transform var(--transition-normal);
+  box-shadow: -5px 0 15px var(--shadow-color);
+}
+
+.settings-panel.show {
+  transform: translateX(0);
+}
+
+/* Ayarlar başlığı */
+.settings-panel h3 {
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--spacing-sm);
+}
+
+.settings-panel h3:first-child {
+  margin-top: 0;
+}
+
+/* Form elemanları */
+.settings-panel label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.settings-panel input[type="text"],
+.settings-panel input[type="number"],
+.settings-panel select,
+.settings-panel textarea {
+  width: 100%;
+  padding: var(--spacing-sm);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.settings-panel textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.settings-panel input[type="checkbox"] {
+  margin-right: var(--spacing-sm);
+}
+
+/* Ayarlar butonları */
+.settings-panel button {
+  margin-bottom: var(--spacing-md);
+}
+
+/* Modüller */
+.module {
+  background-color: var(--bg-tertiary);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.module-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.module-title {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.module-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.module-content {
+  margin-top: var(--spacing-sm);
+}
+
+.module-field {
+  margin-bottom: var(--spacing-sm);
+}
+
+.module-field label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.module-field input,
+.module-field select {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-xs);
+}
+
+/* Kapat butonu */
+.close-settings {
+  position: absolute;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.close-settings:hover {
+  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.1);
+}

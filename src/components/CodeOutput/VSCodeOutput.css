@@ -1,0 +1,108 @@
+.vscode-output-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1e1e1e;
+  color: #cccccc;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  border-top: 1px solid #333333;
+}
+
+.output-tabs {
+  display: flex;
+  background-color: #252526;
+  border-bottom: 1px solid #333333;
+}
+
+.output-tab {
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #bbbbbb;
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.output-tab:hover {
+  color: #ffffff;
+}
+
+.output-tab.active {
+  color: #ffffff;
+  background-color: #1e1e1e;
+  border-top: 1px solid #007acc;
+}
+
+.error-count {
+  display: inline-block;
+  background-color: #f48771;
+  color: #ffffff;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  margin-left: 6px;
+}
+
+.output-content {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+}
+
+.output-panel, .problems-panel, .debug-panel {
+  height: 100%;
+}
+
+.output-text {
+  margin: 0;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.empty-output, .empty-problems, .empty-debug {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #888888;
+  font-style: italic;
+  font-size: 13px;
+}
+
+.error-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.error-item {
+  display: flex;
+  padding: 6px 0;
+  border-bottom: 1px solid #333333;
+}
+
+.error-icon {
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.error-details {
+  flex: 1;
+}
+
+.error-message {
+  font-size: 13px;
+  margin-bottom: 4px;
+  color: #f48771;
+}
+
+.error-location {
+  font-size: 12px;
+  color: #888888;
+}

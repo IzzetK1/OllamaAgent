@@ -1,0 +1,370 @@
+/* CustomVSCode.css */
+.vscode-workspace {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+}
+
+/* Kenar Çubuğu */
+.workspace-sidebar {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  background-color: #1e1e1e;
+  border-right: 1px solid #333333;
+}
+
+.sidebar-tabs {
+  display: flex;
+  flex-direction: column;
+  background-color: #1e1e1e;
+}
+
+.sidebar-tab {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #1e1e1e;
+  color: #cccccc;
+  cursor: pointer;
+  border-bottom: 1px solid #252526;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: bold;
+  position: relative;
+}
+
+.sidebar-tab.active {
+  background-color: #1e1e1e;
+  color: #ffffff;
+}
+
+.sidebar-tab.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: #ffcc00;
+}
+
+.sidebar-tab svg {
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.sidebar-tab span {
+  flex: 1;
+}
+
+.badge {
+  background-color: #4d4d4d;
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow: auto;
+  background-color: #1e1e1e;
+}
+
+/* Dosya Ağacı */
+.file-tree {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-explorer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px;
+  height: 30px;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: bold;
+  color: #cccccc;
+  background-color: #252526;
+}
+
+.file-explorer-header h3 {
+  margin: 0;
+  padding: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: bold;
+  color: #cccccc;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #cccccc;
+}
+
+.file-item:hover {
+  background-color: #2a2d2e;
+}
+
+.file-item.selected {
+  background-color: #37373d;
+}
+
+.file-icon {
+  margin-right: 5px;
+  font-size: 14px;
+  color: #c5c5c5;
+}
+
+.file-item.folder .file-icon {
+  color: #e8ab53;
+}
+
+.file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-size {
+  font-size: 11px;
+  color: #858585;
+  margin-left: 5px;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* Uyarılar */
+.diagnostics-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.diagnostics-list {
+  padding: 5px 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.diagnostic-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border-bottom: 1px solid #1e1e1e;
+  cursor: pointer;
+  background-color: #332b00;
+  color: #ffcc00;
+  margin-bottom: 5px;
+}
+
+.diagnostic-item:hover {
+  background-color: #443700;
+}
+
+.diagnostic-icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.diagnostic-icon svg {
+  color: #ffcc00;
+}
+
+.diagnostic-item.error .diagnostic-icon svg {
+  color: #f48771;
+}
+
+.diagnostic-item.error {
+  background-color: #330000;
+  color: #f48771;
+}
+
+.diagnostic-item.error:hover {
+  background-color: #440000;
+}
+
+.diagnostic-content {
+  flex: 1;
+}
+
+.diagnostic-message {
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.diagnostic-location {
+  font-size: 12px;
+  color: #858585;
+}
+
+/* Terminal */
+.terminal-container-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-output {
+  flex: 1;
+  overflow: hidden;
+}
+
+.terminal-container {
+  height: 100%;
+  padding: 5px;
+  background-color: #1e1e1e;
+}
+
+.terminal {
+  height: 100%;
+}
+
+.sample-terminal {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #d4d4d4;
+  padding: 10px;
+}
+
+.terminal-line {
+  margin-bottom: 5px;
+  white-space: pre-wrap;
+}
+
+.terminal-line.command {
+  color: #569cd6;
+  font-weight: bold;
+}
+
+.terminal-line.success {
+  color: #4ec9b0;
+}
+
+.terminal-line.error {
+  color: #f48771;
+}
+
+/* Ana İçerik */
+.workspace-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 40px;
+  background-color: #252526;
+  border-bottom: 1px solid #1e1e1e;
+  padding: 0 10px;
+}
+
+.file-path {
+  font-size: 13px;
+  color: #cccccc;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.save-button, .run-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background-color: #3c3c3c;
+  border: none;
+  color: #cccccc;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.save-button:hover {
+  background-color: #0e639c;
+}
+
+.run-button {
+  background-color: #4d4d4d;
+}
+
+.run-button:hover {
+  background-color: #0e639c;
+}
+
+.run-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.empty-editor {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  background-color: #1e1e1e;
+}
+
+.empty-editor-message {
+  text-align: center;
+  color: #858585;
+}
+
+.empty-editor-message h3 {
+  margin: 10px 0;
+  font-weight: normal;
+  font-size: 18px;
+}
+
+.empty-editor-message p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Boş Durum */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #858585;
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
+}
+
+.empty-state svg {
+  margin-bottom: 10px;
+  font-size: 24px;
+}

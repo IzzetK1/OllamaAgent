@@ -1,0 +1,209 @@
+@import './css/split.css';
+@import './css/file-tree.css';
+@import './css/markdown.css';
+@import './css/terminal.css';
+@import './css/monaco-editor.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Fira Code', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+
+  /* Tema renkleri - Koyu tema */
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #252525;
+  --bg-tertiary: #2d2d2d;
+  --text-primary: #e2e8f0;
+  --text-secondary: #a0aec0;
+  --accent-primary: #4a90e2;
+  --accent-secondary: #38b2ac;
+  --accent-tertiary: #805ad5;
+  --success: #38a169;
+  --warning: #e6a23c;
+  --error: #e53e3e;
+  --border-color: #444;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+
+  /* Replit benzeri renkler */
+  --replit-bg: #0E1525;
+  --replit-bg-secondary: #1C2333;
+  --replit-bg-tertiary: #2B3245;
+  --replit-text: #F5F9FC;
+  --replit-text-secondary: #C2C8CC;
+  --replit-accent: #3485E4;
+  --replit-accent-hover: #4D9BFF;
+  --replit-success: #17C964;
+  --replit-warning: #F5A524;
+  --replit-error: #F31260;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code, pre, .monaco-editor {
+  font-family: var(--font-mono);
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50
+    disabled:pointer-events-none;
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 h-10 px-4 py-2;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary-600 text-white hover:bg-secondary-700 h-10 px-4 py-2;
+  }
+
+  .btn-outline {
+    @apply border border-gray-300 bg-white hover:bg-gray-100 hover:text-gray-900 h-10 px-4 py-2;
+  }
+
+  .btn-ghost {
+    @apply hover:bg-gray-100 hover:text-gray-900 h-10 px-4 py-2;
+  }
+
+  .btn-icon {
+    @apply h-10 w-10 p-0 flex items-center justify-center;
+  }
+}
+
+/* Kod bloğu stilleri */
+.code-block {
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.dark .code-block {
+  border-color: #2d3748;
+}
+
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background-color: #f7fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+.dark .code-header {
+  background-color: #2d3748;
+  border-color: #4a5568;
+}
+
+.code-filename {
+  font-weight: 500;
+  margin-right: 0.5rem;
+}
+
+.code-language {
+  color: #718096;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.dark .code-language {
+  color: #a0aec0;
+}
+
+.code-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.code-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #718096;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s;
+}
+
+.dark .code-actions button {
+  color: #a0aec0;
+}
+
+.code-actions button:hover {
+  background-color: #edf2f7;
+  color: #4a5568;
+}
+
+.dark .code-actions button:hover {
+  background-color: #4a5568;
+  color: #e2e8f0;
+}
+
+.code-block pre {
+  margin: 0;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+/* Prose stilleri */
+.prose pre {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+.prose p code {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.dark .prose p code {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+
+/* Uyarı ve sonuç stilleri */
+.warning-item {
+  border-left: 4px solid #f59e0b;
+  padding-left: 0.75rem;
+}
+
+.success-item {
+  border-left: 4px solid #10b981;
+  padding-left: 0.75rem;
+}
+
+.error-item {
+  border-left: 4px solid #ef4444;
+  padding-left: 0.75rem;
+}
