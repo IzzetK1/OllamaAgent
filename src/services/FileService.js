@@ -37,88 +37,42 @@ class FileService {
   /**
    * Dosya oluşturur
    * @param {string} projectId - Proje ID'si
-   * @param {string} filePath - Dosya yolu
+   * @param {string} fileName - Dosya adı
    * @param {string} content - Dosya içeriği
-   * @returns {Object} - Dosya bilgileri
+   * @returns {Object|null} - Oluşturulan dosya bilgisi veya null
    */
-  createFile(projectId, filePath, content) {
+  createFile(projectId, fileName, content) {
     try {
+      // Geçersiz dosya adı kontrolü
+      if (this.isInvalidFileName(fileName)) {
+        console.log(`Geçersiz dosya adı: ${fileName}`);
+        return null;
+      }
+      
+      // Dosya adını temizle
+      const cleanFileName = this.cleanFileName(fileName);
+      
       // Proje klasörünü kontrol et
       const projectDir = this.ensureProjectDir(projectId);
-
-      // Dosya yolunu temizle
-      const cleanPath = this.cleanFilePath(filePath);
-
-      console.log(`Dosya oluşturma girişimi: ${cleanPath}`);
-
-      // Terminal komutu kontrolü
-      if (isTerminalCommand(cleanPath) || isTerminalCommand(content.trim())) {
-        console.log(`Terminal komutu algılandı, dosya oluşturulmayacak: ${content.trim()}`);
-        return null;
-      }
-
-      // Dosya yolu kontrolü
-      if (!cleanPath || cleanPath === '' || cleanPath.endsWith('/')) {
-        console.error(`Geçersiz dosya yolu: ${cleanPath}`);
-        return null;
-      }
-
-      // Dosya adında geçersiz karakterler varsa temizle
-      const sanitizedPath = cleanPath.replace(/[^\w\-./]/g, '_');
-
-      const fullPath = this.path.join(projectDir, sanitizedPath);
-      console.log(`Tam dosya yolu: ${fullPath}`);
-
-      // Klasörü oluştur (gerekirse)
-      try {
-        const dirPath = this.path.dirname(fullPath);
-        console.log(`Klasör oluşturuluyor: ${dirPath}`);
-        this.fs.ensureDirSync(dirPath);
-      } catch (dirError) {
-        console.error(`Klasör oluşturma hatası (${this.path.dirname(fullPath)}):`, dirError);
-        return null;
-      }
-
-      // Dosya zaten var mı kontrol et
-      const fileExists = this.fs.existsSync(fullPath);
-
-      // Dosyayı yaz
-      try {
-        console.log(`Dosya yazılıyor: ${fullPath}`);
-        this.fs.writeFileSync(fullPath, content);
-        console.log(`Dosya yazma başarılı: ${fullPath}`);
-      } catch (writeError) {
-        console.error(`Dosya yazma hatası (${sanitizedPath}):`, writeError);
-        return null;
-      }
-
-      // Dosya bilgilerini al
-      try {
-        const stat = this.fs.statSync(fullPath);
-
-        const fileInfo = {
-          path: sanitizedPath,
-          name: this.path.basename(sanitizedPath),
-          size: stat.size,
-          modified: stat.mtime.toISOString()
-        };
-
-        console.log(`Dosya ${fileExists ? 'güncellendi' : 'oluşturuldu'}: ${sanitizedPath}`);
-
-        return fileInfo;
-      } catch (statError) {
-        console.error(`Dosya bilgisi alma hatası (${sanitizedPath}):`, statError);
-
-        // Dosya bilgisi alınamasa bile dosya bilgilerini döndür
-        return {
-          path: sanitizedPath,
-          name: this.path.basename(sanitizedPath),
-          size: content.length,
-          modified: new Date().toISOString()
-        };
-      }
+      
+      // Dosya yolu
+      const filePath = this.path.join(projectDir, cleanFileName);
+      
+      // Klasörü oluştur
+      this.fs.ensureDirSync(this.path.dirname(filePath));
+      
+      // Dosyayı oluştur
+      this.fs.writeFileSync(filePath, content);
+      
+      console.log(`File created: ${cleanFileName}`);
+      
+      return {
+        path: cleanFileName,
+        size: content.length,
+        modified: new Date().toISOString()
+      };
     } catch (error) {
-      console.error(`Dosya oluşturma hatası (${filePath}):`, error);
+      console.error(`Error creating file (${fileName}):`, error);
       return null;
     }
   }
@@ -273,42 +227,236 @@ class FileService {
   createFilesFromCodeBlocks(projectId, codeBlocks) {
     const files = [];
 
-    console.log(`Kod bloklarından dosya oluşturuluyor. Blok sayısı: ${codeBlocks.length}`);
+    // Önce klasörleri oluştur
+    codeBlocks.forEach(block => {
+      const { fileName } = block;
+      if (fileName && fileName.includes('/')) {
+        const dirPath = this.path.dirname(fileName);
+        this.createFolder(projectId, dirPath);
+      }
+    });
 
-    for (const block of codeBlocks) {
+    // Sonra dosyaları oluştur
+    codeBlocks.forEach(block => {
       const { fileName, code, language } = block;
 
-      console.log(`İşlenen blok: Dil=${language}, Dosya=${fileName}`);
-
-      if (fileName) {
-        // Dosya adını temizle ve geçerli bir dosya adı oluştur
-        const cleanedFileName = this.cleanFilePath(fileName);
-
-        console.log(`Temizlenmiş dosya adı: ${cleanedFileName}`);
-
-        // Dosya içeriğini kontrol et
-        if (!code || code.trim() === '') {
-          console.log(`Boş kod bloğu, dosya oluşturulmayacak: ${cleanedFileName}`);
-          continue;
-        }
-
-        // Dosyayı oluştur
-        const fileInfo = this.createFile(projectId, cleanedFileName, code);
-
-        if (fileInfo) {
-          console.log(`Dosya başarıyla oluşturuldu: ${fileInfo.path}`);
-          files.push(fileInfo);
-        } else {
-          console.error(`Dosya oluşturulamadı: ${cleanedFileName}`);
-        }
-      } else {
-        console.log(`Dosya adı yok, blok atlanıyor: ${language}`);
+      // Terminal komutu kontrolü
+      if (this.isTerminalCommand(fileName) || this.isTerminalCommand(code.trim())) {
+        console.log(`Terminal komutu algılandı, dosya oluşturulmayacak: ${fileName || code.trim().substring(0, 50) + '...'}`);
+        return;
       }
-    }
 
-    console.log(`Toplam ${files.length} dosya oluşturuldu.`);
+      // Geçersiz dosya adı kontrolü
+      if (this.isInvalidFileName(fileName)) {
+        console.log(`Geçersiz dosya adı algılandı, dosya oluşturulmayacak: ${fileName}`);
+        return;
+      }
+
+      const file = this.createFile(projectId, fileName, code);
+      if (file) {
+        files.push({
+          ...file,
+          language
+        });
+      }
+    });
+
     return files;
+  }
+
+  /**
+   * Terminal komutu mu kontrol et
+   * @param {string} text - Kontrol edilecek metin
+   * @returns {boolean} - Terminal komutu ise true
+   */
+  isTerminalCommand(text) {
+    if (!text) return false;
+    
+    // Başında boşluk olan satırlar genellikle terminal komutudur
+    if (text.trim().startsWith('    ') || text.trim().startsWith('\t')) {
+      return true;
+    }
+    
+    // Yaygın terminal komutları
+    const terminalCommands = [
+      'npm ', 'node ', 'python ', 'pip ', 'yarn ', 
+      'git ', 'cd ', 'mkdir ', 'touch ', 'rm ', 
+      'cp ', 'mv ', 'ls ', 'dir ', 'cat ', 
+      'echo ', 'curl ', 'wget ', 'ssh ', 'sudo ',
+      '/terminal', '/run', 'npx '
+    ];
+    
+    // Komut kontrolü
+    return terminalCommands.some(cmd => text.trim().startsWith(cmd));
+  }
+
+  /**
+   * Dosya adının geçersiz olup olmadığını kontrol eder
+   * @param {string} fileName - Dosya adı
+   * @returns {boolean} - Geçersiz ise true
+   */
+  isInvalidFileName(fileName) {
+    if (!fileName) return true;
+    
+    // Geçersiz dosya adı desenleri
+    const invalidPatterns = [
+      /^npm\s/, /^node\s/, /^python\s/, /^pip\s/, /^yarn\s/, 
+      /^git\s/, /^cd\s/, /^mkdir\s/, /^touch\s/, /^rm\s/, 
+      /^cp\s/, /^mv\s/, /^ls\s/, /^dir\s/, /^cat\s/, 
+      /^echo\s/, /^curl\s/, /^wget\s/, /^ssh\s/, /^sudo\s/,
+      /^\/terminal/, /^\/run/, /^npx\s/, /^import\s/, /^_!DOCTYPE/,
+      /^body\s{/, /^function\s/, /^class\s/, /^const\s/, /^let\s/, /^var\s/,
+      /^\{/, /^\}/, /^\[/, /^\]/
+    ];
+    
+    return invalidPatterns.some(pattern => pattern.test(fileName.trim()));
+  }
+
+  /**
+   * Dosya adını temizler
+   * @param {string} fileName - Dosya adı
+   * @returns {string} - Temizlenmiş dosya adı
+   */
+  cleanFileName(fileName) {
+    // Başındaki ve sonundaki boşlukları temizle
+    let cleanName = fileName.trim();
+    
+    // Başındaki ve sonundaki tırnak işaretlerini temizle
+    cleanName = cleanName.replace(/^["'`]|["'`]$/g, '');
+    
+    // Başındaki ve sonundaki boşlukları tekrar temizle
+    cleanName = cleanName.trim();
+    
+    // Dosya adında _ karakteri varsa ve başında ve sonunda _ varsa temizle
+    if (cleanName.startsWith('_') && cleanName.endsWith('_')) {
+      cleanName = cleanName.substring(1, cleanName.length - 1).trim();
+    }
+    
+    // Dosya adında { karakteri varsa, temizle
+    if (cleanName === '{' || cleanName.includes('{')) {
+      cleanName = 'file.txt';
+    }
+    
+    return cleanName;
+  }
+
+  /**
+   * Proje dosyalarını temizler
+   * @param {string} projectId - Proje ID'si
+   * @returns {boolean} - Başarılı ise true
+   */
+  clearProjectFiles(projectId) {
+    try {
+      console.log(`Clearing files in project: ${projectId}`);
+      const projectDir = this.ensureProjectDir(projectId);
+      
+      // Proje klasöründeki tüm dosyaları ve klasörleri sil
+      this.fs.emptyDirSync(projectDir);
+      
+      // Geçersiz dosyaları temizle
+      this.cleanInvalidFiles(projectId);
+      
+      return true;
+    } catch (error) {
+      console.error(`Error clearing project files (${projectId}):`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Geçersiz dosyaları temizler
+   * @param {string} projectId - Proje ID'si
+   * @returns {Array} - Silinen dosyalar
+   */
+  cleanInvalidFiles(projectId) {
+    try {
+      const projectDir = this.ensureProjectDir(projectId);
+      
+      // Geçersiz dosya desenleri
+      const invalidFilePatterns = [
+        /^npm\s/, /^node\s/, /^python\s/, /^pip\s/, /^yarn\s/, 
+        /^git\s/, /^cd\s/, /^mkdir\s/, /^touch\s/, /^rm\s/, 
+        /^cp\s/, /^mv\s/, /^ls\s/, /^dir\s/, /^cat\s/, 
+        /^echo\s/, /^curl\s/, /^wget\s/, /^ssh\s/, /^sudo\s/,
+        /^\/terminal/, /^\/run/, /^npx\s/, /^import\s/, /^_!DOCTYPE/,
+        /^body\s{/, /^function\s/, /^class\s/, /^const\s/, /^let\s/, /^var\s/
+      ];
+      
+      // Tüm dosyaları al
+      const getAllFiles = (dir) => {
+        let results = [];
+        const list = this.fs.readdirSync(dir);
+        
+        list.forEach(file => {
+          const filePath = this.path.join(dir, file);
+          const stat = this.fs.statSync(filePath);
+          
+          if (stat && stat.isDirectory()) {
+            // Recursive olarak alt klasörleri tara
+            results = results.concat(getAllFiles(filePath));
+          } else {
+            // Dosya yolunu proje klasörüne göre göreceli hale getir
+            const relativePath = this.path.relative(projectDir, filePath);
+            results.push(relativePath);
+          }
+        });
+        
+        return results;
+      };
+      
+      // Tüm dosyaları al
+      let allFiles = [];
+      try {
+        allFiles = getAllFiles(projectDir);
+        console.log('All files in project:', allFiles);
+      } catch (err) {
+        console.error('Error reading project files:', err);
+        // Hata durumunda boş liste kullan
+        allFiles = [];
+      }
+      
+      // Silinen dosyaları takip et
+      const deletedFiles = [];
+      
+      // Geçersiz dosyaları sil
+      for (const file of allFiles) {
+        const fullPath = this.path.join(projectDir, file);
+        
+        // Dosya adı kontrolü
+        const isInvalidFileName = invalidFilePatterns.some(pattern => 
+          pattern.test(file) || pattern.test(this.path.basename(file))
+        );
+        
+        // Dosya içeriği kontrolü
+        let isInvalidContent = false;
+        try {
+          const content = this.fs.readFileSync(fullPath, 'utf8').trim();
+          const firstLine = content.split('\n')[0].trim();
+          isInvalidContent = invalidFilePatterns.some(pattern => pattern.test(firstLine));
+        } catch (err) {
+          console.error(`Error reading file content: ${file}`, err);
+        }
+        
+        if (isInvalidFileName || isInvalidContent) {
+          console.log(`Removing invalid file: ${file}`);
+          try {
+            this.fs.unlinkSync(fullPath);
+            deletedFiles.push(file);
+          } catch (err) {
+            console.error(`Error removing file: ${file}`, err);
+          }
+        }
+      }
+      
+      return deletedFiles;
+    } catch (error) {
+      console.error('Error cleaning invalid files:', error);
+      return [];
+    }
   }
 }
 
 export default FileService;
+
+
+

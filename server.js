@@ -20,7 +20,7 @@ import FileService from './src/services/FileService.js';
 import setupExtractFilesEndpoint from './src/api/extractFilesEndpoint.js';
 
 // Gerekli modülleri içe aktar
-const { extractCodeBlocks } = require('./src/utils/codeParser');
+import { extractCodeBlocks } from './src/utils/codeParser.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -576,26 +576,66 @@ app.post('/api/terminal', async (req, res) => {
 });
 
 // Proje önizleme API'si
-app.get('/api/projects/:projectId/preview', (req, res) => {
+app.get('/api/projects/:projectId/preview/:file?', (req, res) => {
   try {
-    const { projectId } = req.params;
+    const { projectId, file } = req.params;
     const projectDir = path.join(PROJECTS_DIR, projectId);
-
-    if (!fs.existsSync(projectDir)) {
-      return res.status(404).json({ error: 'Project not found' });
+    
+    // Dosya belirtilmemişse index.html'i kullan
+    let fileName = file || 'index.html';
+    
+    // Dosya yolunu normalize et (Windows/Unix uyumluluğu için)
+    fileName = fileName.replace(/\\/g, '/');
+    
+    // Tam dosya yolu
+    let filePath = path.join(projectDir, fileName);
+    
+    console.log(`Preview request for file: ${filePath}`);
+    
+    // Dosyanın varlığını kontrol et
+    if (!fs.existsSync(filePath)) {
+      console.log(`File not found: ${filePath}`);
+      
+      // Eğer styles.css bulunamadıysa, src/style.css'i dene
+      if (fileName === 'styles.css' && fs.existsSync(path.join(projectDir, 'src', 'style.css'))) {
+        filePath = path.join(projectDir, 'src', 'style.css');
+        console.log(`Using alternative file: ${filePath}`);
+      } 
+      // Eğer src/main.js bulunamadıysa, index.html'i dene
+      else if (fileName.includes('src/main.js') && fs.existsSync(path.join(projectDir, 'index.html'))) {
+        filePath = path.join(projectDir, 'index.html');
+        console.log(`Using alternative file: ${filePath}`);
+      }
+      // Hala bulunamadıysa 404 döndür
+      else {
+        return res.status(404).send('File not found');
+      }
     }
-
-    // index.html dosyasını kontrol et
-    const indexPath = path.join(projectDir, 'index.html');
-    if (!fs.existsSync(indexPath)) {
-      return res.status(404).json({ error: 'index.html not found' });
-    }
-
-    // index.html dosyasını gönder
-    res.sendFile(indexPath);
+    
+    // Dosya uzantısına göre MIME türünü belirle
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes = {
+      '.html': 'text/html',
+      '.js': 'text/javascript',
+      '.css': 'text/css',
+      '.json': 'application/json',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml',
+      '.ico': 'image/x-icon'
+    };
+    
+    const contentType = mimeTypes[ext] || 'text/plain';
+    
+    // Dosyayı oku ve gönder
+    const content = fs.readFileSync(filePath, 'utf8');
+    res.setHeader('Content-Type', contentType);
+    res.send(content);
   } catch (error) {
     console.error('Error serving preview:', error);
-    res.status(500).json({ error: 'Failed to serve preview' });
+    res.status(500).send('Error serving preview');
   }
 });
 
@@ -770,82 +810,357 @@ app.post('/api/projects/:projectId/test', async (req, res) => {
   }
 });
 
-// Proje çalıştırma API'si
-app.post('/api/projects/:projectId/run', async (req, res) => {
+// Yardımcı fonksiyonlar
+/**
+ * Bir klasördeki tüm dosyaları recursive olarak getirir
+ * @param {string} dir - Klasör yolu
+ * @param {string} [subDir=''] - Alt klasör yolu (recursive çağrılar için)
+ * @returns {string[]} - Dosya yolları listesi
+ */
+function getAllFiles(dir, subDir = '') {
+  const result = [];
+  const currentDir = path.join(dir, subDir);
+  
+  try {
+    const files = fs.readdirSync(currentDir);
+    
+    for (const file of files) {
+      const filePath = path.join(subDir, file);
+      const fullPath = path.join(dir, filePath);
+      
+      if (fs.statSync(fullPath).isDirectory()) {
+        // Alt klasörleri recursive olarak tara
+        result.push(...getAllFiles(dir, filePath));
+      } else {
+        // Dosyayı listeye ekle
+        result.push(filePath);
+      }
+    }
+  } catch (err) {
+    console.error(`Error reading directory ${currentDir}:`, err);
+  }
+  
+  return result;
+}
+
+// Projeyi çalıştır API'si
+app.post('/api/projects/:projectId/run', (req, res) => {
   try {
     const { projectId } = req.params;
-    const { command } = req.body;
-
-    if (!projectId) {
-      return res.status(400).json({ error: 'Project ID is required' });
-    }
-
     const projectDir = path.join(PROJECTS_DIR, projectId);
-
-    // Proje klasörünü kontrol et ve gerekirse oluştur
+    
+    // Proje klasörünü kontrol et
     if (!fs.existsSync(projectDir)) {
-      fs.ensureDirSync(projectDir);
-      console.log(`Project directory created: ${projectId}`);
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    // Tüm dosyaları al
+    let allFiles = [];
+    try {
+      allFiles = getAllFiles(projectDir);
+      console.log('All files in project:', allFiles);
+    } catch (err) {
+      console.error('Error reading project files:', err);
+      // Hata durumunda boş liste kullan
+      allFiles = [];
+    }
+    
+    // Geçersiz dosyaları temizle
+    const invalidFilePatterns = [
+      /^npm\s/, /^node\s/, /^python\s/, /^pip\s/, /^yarn\s/, 
+      /^git\s/, /^cd\s/, /^mkdir\s/, /^touch\s/, /^rm\s/, 
+      /^cp\s/, /^mv\s/, /^ls\s/, /^dir\s/, /^cat\s/, 
+      /^echo\s/, /^curl\s/, /^wget\s/, /^ssh\s/, /^sudo\s/,
+      /^\/terminal/, /^\/run/, /^npx\s/, /^import\s/, /^_!DOCTYPE/,
+      /^\{/, /^\}/, /^\[/, /^\]/
+    ];
+    
+    // Geçersiz dosyaları sil
+    for (const file of allFiles) {
+      const fullPath = path.join(projectDir, file);
+      
+      // Dosya adı kontrolü
+      const isInvalidFileName = invalidFilePatterns.some(pattern => 
+        pattern.test(file) || pattern.test(path.basename(file))
+      );
+      
+      // Dosya içeriği kontrolü
+      let isInvalidContent = false;
+      try {
+        const content = fs.readFileSync(fullPath, 'utf8').trim();
+        const firstLine = content.split('\n')[0].trim();
+        isInvalidContent = invalidFilePatterns.some(pattern => pattern.test(firstLine));
+      } catch (err) {
+        console.error(`Error reading file content: ${file}`, err);
+      }
+      
+      if (isInvalidFileName || isInvalidContent) {
+        console.log(`Removing invalid file: ${file}`);
+        try {
+          fs.unlinkSync(fullPath);
+        } catch (err) {
+          console.error(`Error removing file: ${file}`, err);
+        }
+      }
+    }
+    
+    // Dosyaları yeniden al (temizleme sonrası)
+    allFiles = getAllFiles(projectDir);
+    console.log('Files after cleanup:', allFiles);
+    
+    // Gerçek dosyaları filtrele
+    const files = allFiles.filter(file => {
+      // Dosya uzantısına göre filtrele
+      const ext = path.extname(file).toLowerCase();
+      return ['.html', '.js', '.jsx', '.ts', '.tsx', '.css', '.py', '.json', '.txt', '.md', '.xml', '.yml', '.yaml'].includes(ext);
+    });
+    
+    console.log('Filtered files:', files);
+    
+    // Dosya türlerine göre ayır
+    const htmlFiles = files.filter(file => file.endsWith('.html'));
+    const jsFiles = files.filter(file => file.endsWith('.js') || file.endsWith('.jsx'));
+    const tsFiles = files.filter(file => file.endsWith('.ts') || file.endsWith('.tsx'));
+    const pyFiles = files.filter(file => file.endsWith('.py'));
+    
+    console.log('HTML files:', htmlFiles);
+    console.log('JS files:', jsFiles);
+    console.log('TS files:', tsFiles);
+    console.log('Python files:', pyFiles);
+    
+    // Çalıştırılacak komutu belirle
+    let runCommand = '';
+    
+    // Eğer hiç dosya yoksa, varsayılan HTML dosyası oluştur
+    if (files.length === 0) {
+      console.log('No files found, creating default HTML file');
+      
+      // index.html oluştur
+      fs.writeFileSync(
+        path.join(projectDir, 'index.html'),
+        `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <h1>Project</h1>
+    <p>This is a default project page.</p>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>`
+      );
+      
+      // script.js oluştur
+      fs.writeFileSync(
+        path.join(projectDir, 'script.js'),
+        `// Main script
+console.log('Application started');
+
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM loaded');
+});`
+      );
+      
+      // styles.css oluştur
+      fs.writeFileSync(
+        path.join(projectDir, 'styles.css'),
+        `body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+#app {
+  max-width: 800px;
+  margin: 0 auto;
+}`
+      );
+      
+      // Dosya listesini güncelle
+      files.push('index.html', 'styles.css', 'script.js');
+      htmlFiles.push('index.html');
     }
 
-    // Komut belirtilmemişse, dosya türüne göre otomatik komut belirle
-    let runCommand = command;
-
-    if (!runCommand) {
-      // index.html varsa, tarayıcıda aç
-      if (fs.existsSync(path.join(projectDir, 'index.html'))) {
-        runCommand = 'open-browser';
-      }
-      // package.json varsa, npm start
-      else if (fs.existsSync(path.join(projectDir, 'package.json'))) {
-        runCommand = 'npm start';
-      }
-      // main.js veya index.js varsa, node ile çalıştır
-      else if (fs.existsSync(path.join(projectDir, 'main.js'))) {
-        runCommand = 'node main.js';
-      }
-      else if (fs.existsSync(path.join(projectDir, 'index.js'))) {
-        runCommand = 'node index.js';
-      }
-      // Python dosyası varsa, python ile çalıştır
-      else if (fs.existsSync(path.join(projectDir, 'main.py'))) {
-        runCommand = 'python main.py';
-      }
-      // Diğer dosyaları ara
-      else {
-        // Proje klasöründeki tüm dosyaları tara
-        const files = fs.readdirSync(projectDir);
-
-        // JavaScript dosyası ara
-        const jsFile = files.find(file => file.endsWith('.js'));
-        if (jsFile) {
-          runCommand = `node ${jsFile}`;
-        }
-        // Python dosyası ara
-        else {
-          const pyFile = files.find(file => file.endsWith('.py'));
-          if (pyFile) {
-            runCommand = `python ${pyFile}`;
-          }
-          else {
-            return res.status(400).json({ error: 'No runnable file found and no command specified' });
-          }
-        }
-      }
-    }
-
-    // Tarayıcıda açma komutu ise
-    if (runCommand === 'open-browser') {
-      const previewUrl = `http://localhost:${PORT}/api/projects/${projectId}/preview`;
+    // HTML dosyası varsa, tarayıcıda aç
+    if (htmlFiles.length > 0) {
+      const htmlFile = htmlFiles.find(file => file.includes('index.html')) || htmlFiles[0];
+      const previewUrl = `/api/projects/${projectId}/preview/${htmlFile}`;
+      
+      console.log('Opening HTML file in browser:', htmlFile);
+      
       return res.json({
         command: 'open-browser',
         previewUrl,
-        success: true
+        success: true,
+        stdout: `Opening ${htmlFile} in browser`
+      });
+    }
+    // JS dosyası varsa ve HTML dosyası yoksa
+    else if (jsFiles.length > 0 && htmlFiles.length === 0) {
+      // Ana JS dosyasını bul
+      const mainJsFile = jsFiles.find(file => 
+        file.includes('index.js') || 
+        file.includes('main.js') || 
+        file.includes('app.js')
+      ) || jsFiles[0];
+      
+      // JS dosyasının içeriğini oku
+      const jsFilePath = path.join(projectDir, mainJsFile);
+      const jsContent = fs.readFileSync(jsFilePath, 'utf8');
+      
+      // Eğer dosya tarayıcı DOM'una erişiyorsa, HTML dosyası oluştur ve tarayıcıda aç
+      if (jsContent.includes('document.') || jsContent.includes('window.')) {
+        console.log('JS file uses browser DOM, creating HTML file');
+        
+        // HTML dosyası oluştur
+        const indexHtmlPath = path.join(projectDir, 'index.html');
+        fs.writeFileSync(
+          indexHtmlPath,
+          `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JavaScript App</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="${mainJsFile}"></script>
+</body>
+</html>`
+        );
+        
+        // Eğer styles.css yoksa oluştur
+        if (!files.some(file => file.endsWith('.css'))) {
+          fs.writeFileSync(
+            path.join(projectDir, 'styles.css'),
+            `body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+#app {
+  max-width: 800px;
+  margin: 0 auto;
+}`
+          );
+        }
+        
+        const previewUrl = `/api/projects/${projectId}/preview/index.html`;
+        
+        return res.json({
+          command: 'open-browser',
+          previewUrl,
+          success: true,
+          stdout: `Opening index.html in browser`
+        });
+      }
+      
+      runCommand = `node ${mainJsFile}`;
+      console.log('Running JS file:', runCommand);
+    }
+    // TS dosyası varsa
+    else if (tsFiles.length > 0) {
+      // TS dosyası varsa, ts-node ile çalıştır (eğer kuruluysa)
+      const mainTsFile = tsFiles.find(file => 
+        file.includes('index.ts') || 
+        file.includes('main.ts') || 
+        file.includes('app.ts')
+      ) || tsFiles[0];
+      
+      runCommand = `npx ts-node ${mainTsFile}`;
+      console.log('Running TS file:', runCommand);
+    }
+    // Python dosyası varsa
+    else if (pyFiles.length > 0) {
+      // Python dosyası varsa, Python ile çalıştır
+      const mainPyFile = pyFiles.find(file => 
+        file.includes('main.py') || 
+        file.includes('app.py') || 
+        file.includes('index.py')
+      ) || pyFiles[0];
+      
+      runCommand = `python ${mainPyFile}`;
+      console.log('Running Python file:', runCommand);
+    }
+    // Çalıştırılabilir dosya yoksa
+    else {
+      // Çalıştırılabilir dosya yoksa, varsayılan HTML dosyasını oluştur ve aç
+      console.log('No runnable files found, creating and opening default index.html');
+      
+      // index.html oluştur
+      fs.writeFileSync(
+        path.join(projectDir, 'index.html'),
+        `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Default Project</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <h1>Default Project</h1>
+    <p>This is a default project page.</p>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>`
+      );
+      
+      // script.js oluştur
+      fs.writeFileSync(
+        path.join(projectDir, 'script.js'),
+        `// Main script
+console.log('Application started');
+
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM loaded');
+});`
+      );
+      
+      // styles.css oluştur
+      fs.writeFileSync(
+        path.join(projectDir, 'styles.css'),
+        `body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+#app {
+  max-width: 800px;
+  margin: 0 auto;
+}`
+      );
+      
+      const previewUrl = `/api/projects/${projectId}/preview/index.html`;
+      
+      return res.json({
+        command: 'open-browser',
+        previewUrl,
+        success: true,
+        stdout: `Opening default index.html in browser`
       });
     }
 
-    // Diğer komutları çalıştır
+    // Komutu çalıştır
+    console.log('Executing command:', runCommand);
     exec(runCommand, { cwd: projectDir, timeout: 30000 }, (error, stdout, stderr) => {
+      console.log('Command execution result:', { error, stdout, stderr });
+      
       res.json({
         command: runCommand,
         stdout,
@@ -856,7 +1171,7 @@ app.post('/api/projects/:projectId/run', async (req, res) => {
     });
   } catch (error) {
     console.error('Error running project:', error);
-    res.status(500).json({ error: 'Failed to run project' });
+    res.status(500).json({ error: 'Failed to run project', message: error.message });
   }
 });
 
@@ -1759,6 +2074,60 @@ fs.ensureDirSync(path.join(PROJECTS_DIR, 'default', 'public'));
 fs.ensureDirSync(path.join(PROJECTS_DIR, 'default', 'components'));
 fs.ensureDirSync(path.join(PROJECTS_DIR, 'default', 'styles'));
 
+// Add this function before the server.listen call
+function ensureDefaultProject() {
+  try {
+    const projectId = 'default';
+    const projectDir = path.join(PROJECTS_DIR, projectId);
+    
+    // Check if default project already exists
+    if (fs.existsSync(path.join(projectDir, 'project.json'))) {
+      console.log('Default project already exists');
+      return;
+    }
+    
+    console.log('Creating default project...');
+    
+    // Create project directory if it doesn't exist
+    fs.ensureDirSync(projectDir);
+    fs.ensureDirSync(path.join(projectDir, 'src'));
+    
+    // Create project configuration
+    const config = {
+      name: 'Default Project',
+      description: 'Auto-created default project',
+      created: new Date().toISOString()
+    };
+    
+    // Save project configuration
+    const configPath = path.join(projectDir, 'project.json');
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    
+    // Create a basic index.html file
+    fs.writeFileSync(
+      path.join(projectDir, 'index.html'),
+      `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Default Project</title>
+</head>
+<body>
+  <div id="app">
+    <h1>Default Project</h1>
+    <p>This is the default project created automatically.</p>
+  </div>
+</body>
+</html>`
+    );
+    
+    console.log('Default project created successfully');
+  } catch (error) {
+    console.error('Error creating default project:', error);
+  }
+}
+
 // Sunucuyu başlat
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
@@ -1774,6 +2143,79 @@ app.listen(PORT, () => {
   console.log(`- GET /api/projects/:id`);
   console.log(`- POST /api/extract-files`);
 });
+
+// Add this endpoint to handle default project creation
+app.post('/api/projects/default', (req, res) => {
+  try {
+    console.log('Creating default project...');
+    const projectId = 'default';
+    const projectDir = path.join(PROJECTS_DIR, projectId);
+    
+    // Create project directory if it doesn't exist
+    console.log(`Ensuring project directory: ${projectDir}`);
+    fs.ensureDirSync(projectDir);
+    fs.ensureDirSync(path.join(projectDir, 'src'));
+    
+    // Create project configuration
+    const config = {
+      name: 'Default Project',
+      description: 'Auto-created default project',
+      created: new Date().toISOString()
+    };
+    
+    // Save project configuration
+    const configPath = path.join(projectDir, 'project.json');
+    console.log(`Writing config to: ${configPath}`);
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    
+    // Create a basic index.html file
+    const indexPath = path.join(projectDir, 'index.html');
+    console.log(`Writing index.html to: ${indexPath}`);
+    fs.writeFileSync(
+      indexPath,
+      `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Default Project</title>
+</head>
+<body>
+  <div id="app">
+    <h1>Default Project</h1>
+    <p>This is the default project created automatically.</p>
+  </div>
+</body>
+</html>`
+    );
+    
+    console.log('Default project created successfully');
+    res.status(201).json({
+      id: projectId,
+      name: config.name,
+      description: config.description,
+      created: config.created
+    });
+  } catch (error) {
+    console.error('Error creating default project:', error);
+    res.status(500).json({ 
+      error: 'Failed to create default project',
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
 
 
 

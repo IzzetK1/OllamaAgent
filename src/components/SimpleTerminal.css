@@ -1,0 +1,76 @@
+.simple-terminal {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: #252526;
+  color: #cccccc;
+  font-size: 12px;
+  border-bottom: 1px solid #333;
+}
+
+.terminal-project {
+  color: #75beff;
+  font-size: 11px;
+}
+
+.terminal-container {
+  flex: 1;
+  padding: 4px;
+  overflow: hidden;
+  min-height: 200px;
+}
+
+/* Yedek terminal görünümü */
+.fallback-terminal {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px;
+  background-color: #1e1e1e;
+  color: #cccccc;
+  font-family: monospace;
+  font-size: 14px;
+  overflow-y: auto;
+}
+
+.terminal-line {
+  padding: 2px 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.terminal-line.system {
+  color: #75beff;
+}
+
+.terminal-line.error {
+  color: #f14c4c;
+}
+
+.system-prefix, .error-prefix {
+  font-weight: bold;
+  margin-right: 4px;
+}
+
+/* Make sure the terminal takes full height */
+.simple-terminal .xterm {
+  height: 100%;
+}
+
+.simple-terminal .xterm-viewport {
+  overflow-y: auto;
+}

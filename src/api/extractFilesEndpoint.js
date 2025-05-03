@@ -20,6 +20,12 @@ export default function setupExtractFilesEndpoint(app, PROJECTS_DIR, path, fs, e
         return res.status(400).json({ error: 'Project ID is required' });
       }
 
+      console.log('Extract files request received:', { 
+        projectId, 
+        contentLength: content.length,
+        clearFiles 
+      });
+
       // FileService oluştur
       const fileService = new FileService(fs, path, PROJECTS_DIR);
 
@@ -28,6 +34,7 @@ export default function setupExtractFilesEndpoint(app, PROJECTS_DIR, path, fs, e
 
       // Eğer clearFiles true ise, mevcut dosyaları temizle
       if (clearFiles) {
+        console.log(`Clearing files in project: ${projectId}`);
         fileService.clearProjectFiles(projectId);
       }
 
@@ -55,6 +62,9 @@ export default function setupExtractFilesEndpoint(app, PROJECTS_DIR, path, fs, e
       // Dosyaları oluştur
       const files = fileService.createFilesFromCodeBlocks(projectId, codeBlocks);
 
+      // Geçersiz dosyaları temizle
+      fileService.cleanInvalidFiles(projectId);
+
       // WebSocket ile dosya oluşturma bilgisini gönder
       if (io) {
         files.forEach(file => {
@@ -66,100 +76,16 @@ export default function setupExtractFilesEndpoint(app, PROJECTS_DIR, path, fs, e
         });
       }
 
-      // Terminal komutlarını çalıştır
-      const commandResults = [];
-
-      if (terminalCommands.length > 0) {
-        console.log('Terminal komutları çalıştırılıyor:', terminalCommands);
-
-        // Komutları sırayla çalıştır
-        for (let command of terminalCommands) {
-          try {
-            // Komuttaki yeni satır karakterlerini temizle
-            command = command.replace(/\r?\n/g, ' ');
-
-            // CD komutları için özel işlem
-            if (command.startsWith('cd ')) {
-              const dirPath = command.substring(3).trim();
-              // Klasör yolunu oluştur
-              const fullDirPath = path.join(projectDir, dirPath);
-
-              // Klasör yoksa oluştur
-              if (!fs.existsSync(fullDirPath)) {
-                try {
-                  fs.ensureDirSync(fullDirPath);
-                  console.log(`Klasör oluşturuldu: ${dirPath}`);
-
-                  commandResults.push({
-                    command,
-                    stdout: `Klasör oluşturuldu: ${dirPath}`,
-                    stderr: '',
-                    exitCode: 0
-                  });
-                } catch (mkdirError) {
-                  console.error(`Klasör oluşturma hatası: ${mkdirError.message}`);
-
-                  commandResults.push({
-                    command,
-                    stdout: '',
-                    stderr: `Klasör oluşturma hatası: ${mkdirError.message}`,
-                    exitCode: 1
-                  });
-                }
-              } else {
-                commandResults.push({
-                  command,
-                  stdout: `Dizin değiştirildi (simülasyon): ${dirPath}`,
-                  stderr: '',
-                  exitCode: 0
-                });
-              }
-            } else {
-              // Diğer komutları normal çalıştır
-              console.log(`Komut çalıştırılıyor: ${command}`);
-
-              try {
-                const { stdout, stderr } = exec(command, { cwd: projectDir, timeout: 30000 });
-
-                commandResults.push({
-                  command,
-                  stdout: stdout || '',
-                  stderr: stderr || '',
-                  exitCode: 0
-                });
-              } catch (execError) {
-                console.error(`Komut çalıştırma hatası (${command}): ${execError.message}`);
-
-                commandResults.push({
-                  command,
-                  stdout: '',
-                  stderr: execError.message,
-                  exitCode: 1
-                });
-              }
-            }
-          } catch (error) {
-            console.error(`Komut çalıştırma hatası (${command}):`, error);
-
-            commandResults.push({
-              command,
-              stdout: '',
-              stderr: error.message,
-              exitCode: 1
-            });
-          }
-        }
-      }
-
       // Sonuçları döndür
       res.json({
         files,
-        commands: commandResults,
+        commands: [],
         shouldRunProject
       });
     } catch (error) {
-      console.error('Error extracting files:', error);
-      res.status(500).json({ error: 'Failed to extract files' });
+      console.error('Extract files error:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 }
+

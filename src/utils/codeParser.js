@@ -6,63 +6,53 @@
 
 /**
  * Kod bloklarını çıkarır
- * @param {string} content - AI yanıtı
- * @returns {Array} - Çıkarılan kod blokları
+ * @param {string} content - İçerik
+ * @returns {Array} - Kod blokları
  */
 export function extractCodeBlocks(content) {
-  if (!content) return [];
-
-  // Daha güçlü bir regex kullanarak kod bloklarını çıkar
-  // Hem ```language:filename hem de ```language filename formatlarını destekler
-  // Ayrıca ```filename.ext formatını da destekler
-  const codeBlockRegex = /```(?:([a-zA-Z0-9_+-]+)(?:[:|\s+]([^\n]+))?|([^\s\n]+\.[a-zA-Z0-9]+))\n([\s\S]*?)```/g;
-
   const codeBlocks = [];
+  const codeBlockRegex = /```(?:([a-zA-Z0-9_+-]+)(?:[:|\s+]([^\n]+))?)\n([\s\S]*?)```/g;
   let match;
 
   while ((match = codeBlockRegex.exec(content)) !== null) {
-    // Eğer 3. grup eşleşmişse, bu doğrudan bir dosya adıdır (```filename.ext formatı)
-    if (match[3]) {
-      const fileName = match[3].trim();
-      const code = match[4] || '';
+    const language = match[1] || 'text';
+    let fileName = match[2] || '';
+    const code = match[3];
 
-      // Dosya uzantısından dil tahmin et
-      const extension = fileName.split('.').pop().toLowerCase();
-      const language = getLanguageFromExtension(extension);
-
-      // Dosya adını temizle
-      const cleanedFileName = cleanFileName(fileName, language);
-
-      // Terminal komutlarını dosya adı olarak algılamayı önle
-      if (isTerminalCommand(cleanedFileName)) {
-        continue;
-      }
-
-      codeBlocks.push({
-        language,
-        fileName: cleanedFileName,
-        code
-      });
-    } else {
-      // Normal ```language:filename veya ```language filename formatı
-      const language = (match[1] || '').trim().toLowerCase();
-      let fileName = (match[2] || '').trim();
-      const code = match[4] || '';
-
-      // Dosya adını temizle
-      fileName = cleanFileName(fileName, language);
-
-      // Terminal komutlarını dosya adı olarak algılamayı önle
-      if (isTerminalCommand(fileName)) {
-        continue;
-      }
-
-      codeBlocks.push({
-        language,
-        fileName,
-        code
-      });
+    // Terminal komutu kontrolü
+    if (isCommandLanguage(language) || isCommandContent(code)) {
+      console.log('Terminal komutu algılandı, kod bloğu işlenmeyecek:', code.trim().substring(0, 50) + '...');
+      continue;
     }
+
+    // Dosya adı belirtilmemişse, dile göre varsayılan dosya adı belirle
+    if (!fileName || fileName.trim() === '') {
+      fileName = getDefaultFileName(language);
+    }
+
+    // Geçersiz dosya adı kontrolü
+    if (isInvalidFileName(fileName)) {
+      console.log('Geçersiz dosya adı algılandı, kod bloğu işlenmeyecek:', fileName);
+      continue;
+    }
+
+    // Dosya adında { karakteri varsa, geçersiz kabul et
+    if (fileName === '{' || fileName.includes('{')) {
+      console.log('Geçersiz dosya adı algılandı (süslü parantez içeriyor):', fileName);
+      continue;
+    }
+
+    // Dosya içeriği kontrolü
+    if (isInvalidContent(code)) {
+      console.log('Geçersiz içerik algılandı, kod bloğu işlenmeyecek:', code.trim().substring(0, 50) + '...');
+      continue;
+    }
+
+    codeBlocks.push({
+      language,
+      fileName,
+      code
+    });
   }
 
   return codeBlocks;
@@ -150,9 +140,7 @@ export function isTerminalCommand(text) {
  * @param {string} language - Programlama dili
  * @returns {string} - Varsayılan dosya adı
  */
-export function getDefaultFileName(language) {
-  if (!language) return '';
-
+function getDefaultFileName(language) {
   const defaultFileNames = {
     'js': 'index.js',
     'jsx': 'App.jsx',
@@ -188,7 +176,7 @@ export function getDefaultFileName(language) {
     'rs': 'main.rs'
   };
 
-  return defaultFileNames[language.toLowerCase()] || `file.${language.toLowerCase()}`;
+  return defaultFileNames[language.toLowerCase()] || `file.${language}`;
 }
 
 /**
@@ -276,52 +264,39 @@ export function getLanguageFromExtension(extension) {
 
 /**
  * Terminal komutlarını çıkarır
- * @param {string} content - AI yanıtı
- * @returns {Array} - Çıkarılan terminal komutları
+ * @param {string} content - İçerik
+ * @returns {Array} - Terminal komutları
  */
 export function extractTerminalCommands(content) {
-  if (!content) return [];
-
   const commands = [];
-
-  // Kod bloklarındaki terminal komutları
-  const terminalBlockRegex = /```(?:bash|shell|sh|cmd|powershell|terminal)\n([\s\S]*?)```/g;
-  let terminalMatch;
-
-  while ((terminalMatch = terminalBlockRegex.exec(content)) !== null) {
-    const commandBlock = terminalMatch[1].trim();
-    if (commandBlock) {
-      // Komut bloğunu satırlara ayır
-      const commandLines = commandBlock.split('\n');
-      for (const line of commandLines) {
-        const trimmedLine = line.trim();
-        if (trimmedLine && !trimmedLine.startsWith('#')) {
-          commands.push(trimmedLine);
-        }
+  
+  // Kod bloğu içindeki terminal komutları
+  const terminalBlockRegex = /```(?:bash|shell|sh|cmd|powershell|ps1|terminal|console|command)(?:[:|\s+]([^\n]+))?\n([\s\S]*?)```/g;
+  let blockMatch;
+  
+  while ((blockMatch = terminalBlockRegex.exec(content)) !== null) {
+    const commandBlock = blockMatch[2].trim();
+    const commandLines = commandBlock.split('\n');
+    
+    commandLines.forEach(line => {
+      const trimmedLine = line.trim();
+      if (trimmedLine && !trimmedLine.startsWith('#')) {
+        commands.push(trimmedLine);
       }
-    }
+    });
   }
-
-  // /terminal komutları
-  const terminalCommandRegex = /\/terminal\s+(.+)$/gm;
-  let cmdMatch;
-  while ((cmdMatch = terminalCommandRegex.exec(content)) !== null) {
-    const command = cmdMatch[1].trim();
+  
+  // Satır başındaki terminal komutları
+  const lineCommandRegex = /^(?:\/terminal\s+|\/run\s+|\$\s*|>\s*)(.+)$/gm;
+  let lineMatch;
+  
+  while ((lineMatch = lineCommandRegex.exec(content)) !== null) {
+    const command = lineMatch[1].trim();
     if (command) {
       commands.push(command);
     }
   }
-
-  // CD komutları
-  const cdCommandRegex = /^cd\s+(.+)$/gm;
-  let cdMatch;
-  while ((cdMatch = cdCommandRegex.exec(content)) !== null) {
-    const dirPath = cdMatch[1].trim();
-    if (dirPath) {
-      commands.push(`cd ${dirPath}`);
-    }
-  }
-
+  
   return commands;
 }
 
@@ -334,3 +309,90 @@ export default {
   getLanguageFromExtension,
   extractTerminalCommands
 };
+
+/**
+ * Dilin komut dili olup olmadığını kontrol eder
+ * @param {string} language - Dil
+ * @returns {boolean} - Komut dili ise true
+ */
+function isCommandLanguage(language) {
+  if (!language) return false;
+  
+  const commandLanguages = [
+    'bash', 'shell', 'sh', 'cmd', 'powershell', 'ps1', 
+    'terminal', 'console', 'command'
+  ];
+  
+  return commandLanguages.includes(language.toLowerCase());
+}
+
+/**
+ * İçeriğin komut içerip içermediğini kontrol eder
+ * @param {string} content - İçerik
+ * @returns {boolean} - Komut içeriyorsa true
+ */
+function isCommandContent(content) {
+  if (!content) return false;
+  
+  // Yaygın terminal komutları
+  const terminalCommands = [
+    'npm ', 'node ', 'python ', 'pip ', 'yarn ', 
+    'git ', 'cd ', 'mkdir ', 'touch ', 'rm ', 
+    'cp ', 'mv ', 'ls ', 'dir ', 'cat ', 
+    'echo ', 'curl ', 'wget ', 'ssh ', 'sudo ',
+    '/terminal', '/run', 'npx '
+  ];
+  
+  const contentLines = content.trim().split('\n');
+  
+  // İlk satır komut mu kontrol et
+  const firstLine = contentLines[0].trim();
+  return terminalCommands.some(cmd => firstLine.startsWith(cmd));
+}
+
+/**
+ * Dosya adının geçersiz olup olmadığını kontrol eder
+ * @param {string} fileName - Dosya adı
+ * @returns {boolean} - Geçersiz ise true
+ */
+function isInvalidFileName(fileName) {
+  if (!fileName) return true;
+  
+  // Geçersiz dosya adı desenleri
+  const invalidPatterns = [
+    /^npm\s/, /^node\s/, /^python\s/, /^pip\s/, /^yarn\s/, 
+    /^git\s/, /^cd\s/, /^mkdir\s/, /^touch\s/, /^rm\s/, 
+    /^cp\s/, /^mv\s/, /^ls\s/, /^dir\s/, /^cat\s/, 
+    /^echo\s/, /^curl\s/, /^wget\s/, /^ssh\s/, /^sudo\s/,
+    /^\/terminal/, /^\/run/, /^npx\s/, /^import\s/, /^_!DOCTYPE/,
+    /^body\s{/, /^function\s/, /^class\s/, /^const\s/, /^let\s/, /^var\s/,
+    /^\{/, /^\}/, /^\[/, /^\]/
+  ];
+  
+  return invalidPatterns.some(pattern => pattern.test(fileName.trim()));
+}
+
+/**
+ * İçeriğin geçersiz olup olmadığını kontrol eder
+ * @param {string} content - İçerik
+ * @returns {boolean} - Geçersiz ise true
+ */
+function isInvalidContent(content) {
+  if (!content) return true;
+  
+  // Geçersiz içerik desenleri
+  const invalidPatterns = [
+    /^import\s+React\s+from\s+'react';$/,
+    /^body\s+{$/,
+    /^calculator-app\/$/,
+    /^{$/,
+    /^}$/,
+    /^import\s+{.*}\s+from\s+/
+  ];
+  
+  const firstLine = content.trim().split('\n')[0].trim();
+  return invalidPatterns.some(pattern => pattern.test(firstLine));
+}
+
+
+

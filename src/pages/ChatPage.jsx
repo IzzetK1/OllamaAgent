@@ -3,7 +3,7 @@ import { FiSend, FiTrash, FiCopy, FiAlertCircle, FiFolder, FiTerminal, FiMonitor
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import ResizablePanel from '../components/ResizablePanel';
 import VSCodeFileExplorer from '../components/FileExplorer/VSCodeFileExplorer';
-import VSCodeTerminal from '../components/Terminal/VSCodeTerminal';
+import SimpleTerminal from '../components/SimpleTerminal';
 import WebPreview from '../components/VisualOutput/WebPreview';
 import { fetchProjectFiles } from '../utils/fileUtils';
 
@@ -489,6 +489,8 @@ const ChatPage = () => {
         }
       }
 
+      console.log('Terminal komutu çalıştırılıyor:', command);
+
       // CD komutları için özel işlem
       if (command.startsWith('cd ')) {
         const dirPath = command.substring(3).trim();
@@ -565,20 +567,20 @@ const ChatPage = () => {
 
       const result = await response.json();
 
-      // Sonucu göster
-      setExecutionResults(prev => [...prev, {
-        id: Date.now(),
-        command,
-        output: result && (result.stdout || result.stderr) || 'No output available',
-        success: result && result.exitCode === 0
-      }]);
-
       // Terminal çıktısını güncelle
       setTerminalOutput(prev => [...prev, {
         id: Date.now(),
         command,
-        output: result && (result.stdout || result.stderr) || 'No output available',
-        success: result && result.exitCode === 0
+        output: result.stdout || result.stderr,
+        success: result.exitCode === 0
+      }]);
+
+      // Çalıştırma sonuçlarını göster
+      setExecutionResults(prev => [...prev, {
+        id: Date.now(),
+        command,
+        output: result.stdout || result.stderr,
+        success: result.exitCode === 0
       }]);
 
       // Eğer HTML dosyası çalıştırıldıysa veya web sunucusu başlatıldıysa önizleme göster
@@ -906,39 +908,36 @@ const ChatPage = () => {
     }
 
     try {
-      // Önce dosyaları test et
-      const testResponse = await fetch(`/api/projects/${activeProject}/test`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          files: [] // Boş dizi gönderdiğimizde tüm dosyaları test eder
-        })
-      });
-
-      if (testResponse.ok) {
-        const testResult = await testResponse.json();
-        console.log('Test sonuçları:', testResult);
-
-        // Test sonuçlarını göster
-        if (testResult.results && testResult.results.length > 0) {
-          const failedTests = testResult.results.filter(r => !r.success);
-
-          if (failedTests.length > 0) {
-            setWarnings(prev => [...prev, {
-              id: Date.now(),
-              message: `${failedTests.length} dosya test edilemedi. Lütfen hataları düzeltin.`
-            }]);
-          } else {
-            setExecutionResults(prev => [...prev, {
-              id: Date.now(),
-              command: 'Dosya Testi',
-              output: `${testResult.results.length} dosya başarıyla test edildi.`,
-              success: true
-            }]);
-          }
-        }
+      console.log('Proje çalıştırılıyor:', activeProject);
+      
+      // Önce proje dosyalarını kontrol et
+      const filesResponse = await fetch(`/api/projects/${activeProject}/files`);
+      const filesData = await filesResponse.json();
+      
+      // Eğer dosya yoksa, kullanıcıya bilgi ver
+      if (!filesData.files || filesData.files.length === 0) {
+        console.log('Projede çalıştırılabilir dosya bulunamadı. Varsayılan dosya oluşturulacak.');
+        
+        // Varsayılan HTML dosyası oluştur
+        await createFile('index.html', `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Project</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    h1 { color: #333; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome to My Project</h1>
+    <p>This is a starter template. Edit this file to get started!</p>
+  </div>
+</body>
+</html>`);
       }
 
       // Projeyi çalıştır
@@ -946,34 +945,45 @@ const ChatPage = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({})
       });
 
       if (!response.ok) {
-        throw new Error('Proje çalıştırılamadı');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Proje çalıştırılamadı');
       }
 
       const result = await response.json();
+      console.log('Proje çalıştırma sonucu:', result);
 
-      if (result.previewUrl) {
+      if (result.command === 'open-browser' && result.previewUrl) {
         // Önizleme URL'sini ayarla
         setPreviewUrl(result.previewUrl);
         setShowPreview(true);
         setActiveTab('preview');
+        
+        // Başarı mesajı göster
+        setExecutionResults(prev => [...prev, {
+          id: Date.now(),
+          command: 'Tarayıcıda Aç',
+          output: 'Proje tarayıcıda açıldı.',
+          success: true
+        }]);
+      } else {
+        // Sonucu göster
+        setExecutionResults(prev => [...prev, {
+          id: Date.now(),
+          command: result.command || 'Proje Çalıştırma',
+          output: result.stdout || result.stderr || 'Proje başarıyla çalıştırıldı.',
+          success: result.success
+        }]);
       }
-
-      // Sonucu göster
-      setExecutionResults(prev => [...prev, {
-        id: Date.now(),
-        command: 'Proje Çalıştırma',
-        output: result.stdout || result.stderr || 'Proje başarıyla çalıştırıldı.',
-        success: result.success
-      }]);
 
       // Terminal çıktısını güncelle
       setTerminalOutput(prev => [...prev, {
         id: Date.now(),
-        command: 'Proje Çalıştırma',
+        command: result.command || 'Proje Çalıştırma',
         output: result.stdout || result.stderr || 'Proje başarıyla çalıştırıldı.',
         success: result.success
       }]);
@@ -983,8 +993,251 @@ const ChatPage = () => {
         id: Date.now(),
         message: `Proje çalıştırma hatası: ${error.message}`
       }]);
+      
+      // Terminal çıktısını güncelle
+      setTerminalOutput(prev => [...prev, {
+        id: Date.now(),
+        command: 'Proje Çalıştırma',
+        output: `Hata: ${error.message}`,
+        success: false
+      }]);
     }
   };
+
+  // AI yanıtını işleme fonksiyonu
+  const processAIResponse = async (response) => {
+    try {
+      // Dosya oluşturma komutlarını bul
+      // Örnek format: `pages/index.js` dosyasını açın ve aşağıdaki kodu ekleyin:
+      const fileCommandRegex = /`([^`]+)`\s+dosyasını\s+(?:açın|oluşturun)\s+ve\s+(?:aşağıdaki|şu)\s+kodu\s+ekleyin/g;
+      let fileMatch;
+      let fileCommands = [];
+      
+      while ((fileMatch = fileCommandRegex.exec(response)) !== null) {
+        const filePath = fileMatch[1].trim();
+        
+        // Dosya yolunun geçerli olup olmadığını kontrol et
+        if (filePath && !filePath.includes('..') && !filePath.startsWith('/')) {
+          fileCommands.push({
+            filePath,
+            index: fileMatch.index
+          });
+        }
+      }
+      
+      // Kod bloklarını bul
+      const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+      let codeMatch;
+      let codeBlocks = [];
+      
+      while ((codeMatch = codeBlockRegex.exec(response)) !== null) {
+        const language = codeMatch[1] || 'text';
+        const code = codeMatch[2].trim();
+        
+        // Terminal komutu kontrolü
+        const isTerminalCommand = isCommandLanguage(language) || isCommandContent(code);
+        
+        codeBlocks.push({
+          language,
+          code,
+          index: codeMatch.index,
+          isTerminalCommand
+        });
+      }
+      
+      // Dosya komutları ve kod bloklarını eşleştir
+      for (let i = 0; i < fileCommands.length; i++) {
+        const fileCommand = fileCommands[i];
+        
+        // Bu dosya komutu için en yakın kod bloğunu bul
+        let closestCodeBlock = null;
+        let minDistance = Infinity;
+        
+        for (const codeBlock of codeBlocks) {
+          // Terminal komutlarını atla
+          if (codeBlock.isTerminalCommand) continue;
+          
+          const distance = Math.abs(codeBlock.index - fileCommand.index);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestCodeBlock = codeBlock;
+          }
+        }
+        
+        // Eğer bir kod bloğu bulunduysa ve makul bir mesafedeyse
+        if (closestCodeBlock && minDistance < 1000) {
+          // Dosyayı oluştur
+          console.log(`Dosya oluşturuluyor: ${fileCommand.filePath}`);
+          await createFile(fileCommand.filePath, closestCodeBlock.code);
+          
+          // Başarı mesajı göster
+          setExecutionResults(prev => [...prev, {
+            id: Date.now(),
+            command: `Dosya Oluşturma: ${fileCommand.filePath}`,
+            output: `Dosya başarıyla oluşturuldu: ${fileCommand.filePath}`,
+            success: true
+          }]);
+        }
+      }
+      
+      // Terminal komutlarını çalıştır
+      const terminalCommands = [];
+      
+      // Terminal komutlarını topla
+      for (const codeBlock of codeBlocks) {
+        if (codeBlock.isTerminalCommand) {
+          const commandLines = codeBlock.code.split('\n');
+          for (const line of commandLines) {
+            const trimmedLine = line.trim();
+            if (trimmedLine && !trimmedLine.startsWith('#')) {
+              terminalCommands.push(trimmedLine);
+            }
+          }
+        }
+      }
+      
+      // Satır başındaki terminal komutlarını bul
+      const lineCommandRegex = /^(?:\/terminal\s+|\/run\s+|\$\s*|>\s*)(.+)$/gm;
+      let lineMatch;
+      
+      while ((lineMatch = lineCommandRegex.exec(response)) !== null) {
+        const command = lineMatch[1].trim();
+        if (command) {
+          terminalCommands.push(command);
+        }
+      }
+      
+      // Terminal komutlarını çalıştır
+      for (const command of terminalCommands) {
+        await executeTerminalCommand(command);
+      }
+      
+      // Eşleştirilmemiş kod bloklarını işle
+      for (let i = 0; i < codeBlocks.length; i++) {
+        const codeBlock = codeBlocks[i];
+        
+        // Terminal komutlarını atla
+        if (codeBlock.isTerminalCommand) continue;
+        
+        // Bu kod bloğu zaten bir dosya ile eşleştirilmiş mi?
+        let isMatched = false;
+        
+        for (const fileCommand of fileCommands) {
+          for (const matchedCodeBlock of codeBlocks) {
+            if (Math.abs(matchedCodeBlock.index - fileCommand.index) < 1000 && 
+                matchedCodeBlock.index === codeBlock.index) {
+              isMatched = true;
+              break;
+            }
+          }
+          
+          if (isMatched) break;
+        }
+        
+        // Eğer eşleştirilmemişse, varsayılan dosya adıyla kaydet
+        if (!isMatched) {
+          const fileName = getDefaultFileName(codeBlock.language);
+          await createFile(fileName, codeBlock.code);
+        }
+      }
+      
+      // Dosya oluşturma işlemi tamamlandıktan sonra projeyi çalıştır
+      setTimeout(() => {
+        runProject();
+      }, 1000);
+      
+    } catch (error) {
+      console.error('AI yanıtını işleme hatası:', error);
+      setWarnings(prev => [...prev, {
+        id: Date.now(),
+        message: `AI yanıtını işleme hatası: ${error.message}`
+      }]);
+    }
+  };
+
+  /**
+   * Dilin komut dili olup olmadığını kontrol eder
+   * @param {string} language - Dil
+   * @returns {boolean} - Komut dili ise true
+   */
+  function isCommandLanguage(language) {
+    if (!language) return false;
+    
+    const commandLanguages = [
+      'bash', 'shell', 'sh', 'cmd', 'powershell', 'ps1', 
+      'terminal', 'console', 'command'
+    ];
+    
+    return commandLanguages.includes(language.toLowerCase());
+  }
+
+  /**
+   * İçeriğin komut içerip içermediğini kontrol eder
+   * @param {string} content - İçerik
+   * @returns {boolean} - Komut içeriyorsa true
+   */
+  function isCommandContent(content) {
+    if (!content) return false;
+    
+    // Yaygın terminal komutları
+    const terminalCommands = [
+      'npm ', 'node ', 'python ', 'pip ', 'yarn ', 
+      'git ', 'cd ', 'mkdir ', 'touch ', 'rm ', 
+      'cp ', 'mv ', 'ls ', 'dir ', 'cat ', 
+      'echo ', 'curl ', 'wget ', 'ssh ', 'sudo ',
+      '/terminal', '/run'
+    ];
+    
+    const contentLines = content.trim().split('\n');
+    
+    // İlk satır komut mu kontrol et
+    const firstLine = contentLines[0].trim();
+    return terminalCommands.some(cmd => firstLine.startsWith(cmd));
+  }
+
+  /**
+   * Dile göre varsayılan dosya adı döndürür
+   * @param {string} language - Dil
+   * @returns {string} - Varsayılan dosya adı
+   */
+  function getDefaultFileName(language) {
+    const defaultFileNames = {
+      'js': 'index.js',
+      'jsx': 'App.jsx',
+      'ts': 'index.ts',
+      'tsx': 'App.tsx',
+      'html': 'index.html',
+      'css': 'styles.css',
+      'json': 'data.json',
+      'py': 'main.py',
+      'java': 'Main.java',
+      'c': 'main.c',
+      'cpp': 'main.cpp',
+      'go': 'main.go',
+      'rb': 'main.rb',
+      'php': 'index.php',
+      'sh': 'script.sh',
+      'bash': 'script.sh',
+      'md': 'README.md',
+      'sql': 'query.sql',
+      'yaml': 'config.yaml',
+      'yml': 'config.yml',
+      'xml': 'data.xml',
+      'dockerfile': 'Dockerfile',
+      'docker': 'Dockerfile',
+      'javascript': 'index.js',
+      'typescript': 'index.ts',
+      'python': 'main.py',
+      'ruby': 'main.rb',
+      'golang': 'main.go',
+      'csharp': 'Program.cs',
+      'cs': 'Program.cs',
+      'rust': 'main.rs',
+      'rs': 'main.rs'
+    };
+
+    return defaultFileNames[language.toLowerCase()] || `file.${language}`;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -1653,10 +1906,10 @@ Remember: You ARE capable of creating websites and applications. Your purpose is
                 </div>
               )}
 
-              {/* VSCode Terminal */}
+              {/* SimpleTerminal */}
               {activeTab === 'terminal' && (
                 <div className="h-full">
-                  <VSCodeTerminal
+                  <SimpleTerminal
                     projectId={activeProject}
                     onCommand={executeTerminalCommand}
                     onClear={clearTerminal}

@@ -21,7 +21,7 @@ const VSCodeTerminal = ({ projectId, onCommand, onClear }) => {
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    // XTerm.js başlat
+    // Create terminal instance
     const term = new XTerm({
       cursorBlink: true,
       cursorStyle: 'bar',
@@ -54,151 +54,67 @@ const VSCodeTerminal = ({ projectId, onCommand, onClear }) => {
       }
     });
 
-    // Eklentileri yükle
+    // Create and load addons before opening the terminal
     const fitAddon = new FitAddon();
-    const webLinksAddon = new WebLinksAddon((event, uri) => {
-      window.open(uri, '_blank');
-    });
+    const webLinksAddon = new WebLinksAddon();
     const searchAddon = new SearchAddon();
 
     term.loadAddon(fitAddon);
     term.loadAddon(webLinksAddon);
     term.loadAddon(searchAddon);
 
-    // Terminal'i DOM'a ekle
+    // Open terminal in DOM
     term.open(terminalRef.current);
-    fitAddon.fit();
-
-    // Hoş geldiniz mesajı
-    term.writeln('\x1b[1;34mOllama AI Terminal - v2.0.0\x1b[0m');
-    term.writeln('\x1b[90mKomutları çalıştırmak için yazın ve Enter tuşuna basın.\x1b[0m');
-    term.writeln('\x1b[90mProje: ' + (projectId || 'default') + '\x1b[0m');
-    term.writeln('');
-    term.write('$ ');
-
-    // Referansları sakla
+    
+    // Store references
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
-    setIsReady(true);
-
-    // Klavye olaylarını dinle
-    term.onKey(({ key, domEvent }) => {
-      const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
-
-      // Enter tuşu - komutu çalıştır
-      if (domEvent.keyCode === 13) {
-        const command = currentLineRef.current.trim();
-
-        term.writeln('');
-
-        if (command) {
-          // Komut geçmişine ekle
-          commandHistoryRef.current.push(command);
-          historyIndexRef.current = commandHistoryRef.current.length;
-
-          // Komutu işle
-          if (command === 'clear') {
-            term.clear();
-            if (onClear) onClear();
-          } else {
-            // Komutu gönder
-            setIsRunning(true);
-            if (onCommand) onCommand(command);
-          }
-        }
-
-        // Yeni satır
-        currentLineRef.current = '';
-        term.write('$ ');
+    
+    // Delay the fit operation to ensure the terminal is fully rendered
+    setTimeout(() => {
+      try {
+        fitAddon.fit();
+      } catch (e) {
+        console.warn('Terminal fit error:', e);
       }
-      // Backspace tuşu
-      else if (domEvent.keyCode === 8) {
-        if (currentLineRef.current.length > 0) {
-          currentLineRef.current = currentLineRef.current.slice(0, -1);
-          term.write('\b \b');
-        }
-      }
-      // Yukarı ok tuşu - komut geçmişi
-      else if (domEvent.keyCode === 38) {
-        if (commandHistoryRef.current.length > 0 && historyIndexRef.current > 0) {
-          historyIndexRef.current--;
-          
-          // Mevcut satırı temizle
-          term.write('\x1b[2K\r$ ');
-          
-          // Geçmiş komutu yaz
-          const historyCommand = commandHistoryRef.current[historyIndexRef.current];
-          term.write(historyCommand);
-          currentLineRef.current = historyCommand;
-        }
-      }
-      // Aşağı ok tuşu - komut geçmişi
-      else if (domEvent.keyCode === 40) {
-        // Mevcut satırı temizle
-        term.write('\x1b[2K\r$ ');
-        
-        if (historyIndexRef.current < commandHistoryRef.current.length - 1) {
-          historyIndexRef.current++;
-          // Geçmiş komutu yaz
-          const historyCommand = commandHistoryRef.current[historyIndexRef.current];
-          term.write(historyCommand);
-          currentLineRef.current = historyCommand;
-        } else {
-          // Geçmişin sonuna gelindi, boş satır
-          historyIndexRef.current = commandHistoryRef.current.length;
-          currentLineRef.current = '';
-        }
-      }
-      // Tab tuşu - otomatik tamamlama
-      else if (domEvent.keyCode === 9) {
-        domEvent.preventDefault();
-        
-        // Basit otomatik tamamlama
-        const commonCommands = [
-          'npm', 'node', 'python', 'git', 'ls', 'cd', 'mkdir', 'touch', 'cat', 'echo'
-        ];
-        
-        const currentCommand = currentLineRef.current.split(' ')[0];
-        const matchingCommands = commonCommands.filter(cmd => 
-          cmd.startsWith(currentCommand) && cmd !== currentCommand
-        );
-        
-        if (matchingCommands.length === 1) {
-          // Tek eşleşme varsa tamamla
-          const completion = matchingCommands[0].substring(currentCommand.length);
-          term.write(completion);
-          currentLineRef.current += completion;
-        } else if (matchingCommands.length > 1) {
-          // Birden fazla eşleşme varsa listele
-          term.writeln('');
-          term.writeln(matchingCommands.join('  '));
-          term.write('$ ' + currentLineRef.current);
-        }
-      }
-      // Yazdırılabilir karakterler
-      else if (printable) {
-        term.write(key);
-        currentLineRef.current += key;
-      }
-    });
+      
+      // Write welcome message after fit
+      term.writeln('\x1b[1;34mOllama AI Terminal - v2.0.0\x1b[0m');
+      term.writeln('\x1b[90mKomutları çalıştırmak için yazın ve Enter tuşuna basın.\x1b[0m');
+      term.writeln('\x1b[90mProje: ' + (projectId || 'default') + '\x1b[0m');
+      term.writeln('');
+      term.write('$ ');
+      
+      setIsReady(true);
+    }, 100);
 
-    // Pencere boyutu değiştiğinde terminal boyutunu ayarla
+    // Handle window resize
     const resizeObserver = new ResizeObserver(() => {
-      if (fitAddonRef.current) {
-        fitAddonRef.current.fit();
+      if (fitAddonRef.current && xtermRef.current) {
+        try {
+          fitAddonRef.current.fit();
+        } catch (e) {
+          console.warn('Terminal resize error:', e);
+        }
       }
     });
     
-    resizeObserver.observe(terminalRef.current);
+    if (terminalRef.current) {
+      resizeObserver.observe(terminalRef.current);
+    }
 
-    // Temizleme
+    // Cleanup
     return () => {
       resizeObserver.disconnect();
       if (xtermRef.current) {
-        xtermRef.current.dispose();
+        try {
+          xtermRef.current.dispose();
+        } catch (e) {
+          console.warn('Terminal dispose error:', e);
+        }
       }
     };
-  }, [projectId, onCommand, onClear]);
+  }, [projectId]);
 
   // Komut çıktısını göster
   const writeOutput = (output, isError = false) => {
@@ -265,3 +181,4 @@ const VSCodeTerminal = ({ projectId, onCommand, onClear }) => {
 };
 
 export default VSCodeTerminal;
+

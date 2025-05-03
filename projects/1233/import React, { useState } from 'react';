@@ -1,0 +1,86 @@
+import './index.css';
+
+function App() {
+  const [displayValue, setDisplayValue] = useState('0');
+  let currentOperation = null;
+  let currentValue = null;
+
+  const updateDisplay = (value) => {
+    if (currentValue === null || currentValue === '') {
+      setDisplayValue(value);
+    } else {
+      setDisplayValue(currentValue + value);
+    }
+  };
+
+  const handleNumberClick = (number) => {
+    if (displayValue === '0' && number !== '.') {
+      setDisplayValue(number.toString());
+    } else {
+      setDisplayValue(displayValue + number.toString());
+    }
+  };
+
+  const handleOperationClick = (operation) => {
+    currentValue = displayValue;
+    currentOperation = operation;
+    setDisplayValue('0');
+  };
+
+  const calculateResult = () => {
+    let result;
+    switch (currentOperation) {
+      case '+':
+        result = parseFloat(currentValue) + parseFloat(displayValue);
+        break;
+      case '-':
+        result = parseFloat(currentValue) - parseFloat(displayValue);
+        break;
+      case '*':
+        result = parseFloat(currentValue) * parseFloat(displayValue);
+        break;
+      case '/':
+        if (parseFloat(displayValue) !== 0) {
+          result = parseFloat(currentValue) / parseFloat(displayValue);
+        } else {
+          result = 'Error';
+        }
+        break;
+      default:
+        result = displayValue;
+    }
+    setDisplayValue(result.toString());
+  };
+
+  return (
+    <div className="calculator">
+      <input
+        type="text"
+        className="display"
+        value={displayValue}
+        readOnly
+      />
+      <button className="button" onClick={() => handleNumberClick('7')}>7</button>
+      <button className="button" onClick={() => handleNumberClick('8')}>8</button>
+      <button className="button" onClick={() => handleNumberClick('9')}>9</button>
+      <button className="button" onClick={() => handleOperationClick('/')}>/</button>
+
+      <button className="button" onClick={() => handleNumberClick('4')}>4</button>
+      <button className="button" onClick={() => handleNumberClick('5')}>5</button>
+      <button className="button" onClick={() => handleNumberClick('6')}>6</button>
+      <button className="button" onClick={() => handleOperationClick('*')}>*</button>
+
+      <button className="button" onClick={() => handleNumberClick('1')}>1</button>
+      <button className="button" onClick={() => handleNumberClick('2')}>2</button>
+      <button className="button" onClick={() => handleNumberClick('3')}>3</button>
+      <button className="button" onClick={() => handleOperationClick('-')}>-</button>
+
+      <button className="button" onClick={() => handleNumberClick('0')}>0</button>
+      <button className="button" onClick={() => handleNumberClick('.')}>.</button>
+      <button className="button" onClick={calculateResult}>=</button>
+      <button className="button" onClick={() => handleOperationClick('+)}>+</button>
+    </div>
+  );
+}
+
+export default App;
